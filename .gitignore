@@ -1,0 +1,39 @@
+# .NET Core
+bin/
+obj/
+*.user
+*.userosscache
+*.sln.docstates
+
+# Visual Studio files
+.vs/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# Rider
+.idea/
+
+# User-specific files
+*.rsuser
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+
+# Sensitive configuration
+appsettings.Production.json
+appsettings.json
+
+# Logs
+*.log
+
+# Local database
+*.db
+*.db-shm
+*.db-wal
+
+# Environment variables
+.env 
