@@ -8,6 +8,7 @@ using Microsoft.EntityFrameworkCore;
 using System.Linq;
 using Telegram.Bot.Types;
 using Telegram.Bot.Types.Enums;
+using System.Threading;
 
 namespace GoodMorningBot.Services
 {
@@ -17,6 +18,8 @@ namespace GoodMorningBot.Services
         private readonly BotDbContext _dbContext;
         private readonly HttpClient _httpClient;
         private readonly string _unsplashApiKey;
+        private static readonly SemaphoreSlim _semaphore = new SemaphoreSlim(1, 1);
+        private static DateTime _lastExecutionTime = DateTime.MinValue;
 
         private static string EscapeMarkdown(string text)
         {
@@ -37,31 +40,51 @@ namespace GoodMorningBot.Services
 
         public async Task SendMorningMessagesAsync()
         {
-            var chats = await _dbContext.Chats.ToListAsync();
-            var (quote, author) = await GetQuoteAsync();
-            var imageUrl = await GetMorningImageAsync();
-
-            foreach (var chat in chats)
+            // Проверяем, не выполнялась ли задача в последнюю минуту
+            if (DateTime.UtcNow.Subtract(_lastExecutionTime).TotalMinutes < 1)
             {
-                try
+                return;
+            }
+
+            // Пытаемся получить блокировку
+            if (!await _semaphore.WaitAsync(TimeSpan.FromSeconds(5)))
+            {
+                return; // Если не удалось получить блокировку за 5 секунд, выходим
+            }
+
+            try
+            {
+                _lastExecutionTime = DateTime.UtcNow;
+                var chats = await _dbContext.Chats.ToListAsync();
+                var (quote, author) = await GetQuoteAsync();
+                var imageUrl = await GetMorningImageAsync();
+
+                foreach (var chat in chats)
                 {
-                    using (var stream = await _httpClient.GetStreamAsync(imageUrl))
+                    try
                     {
-                        var escapedQuote = EscapeMarkdown(quote);
-                        var escapedAuthor = EscapeMarkdown(author);
-                        var caption = $"*Доброе утро\\!* ☀️\n\nЦитата дня:\n`{escapedQuote}` _\\(c\\) {(escapedAuthor == string.Empty ? "Неизвестный автор" : escapedAuthor)}_";
-                        await _botClient.SendPhotoAsync(
-                            chatId: chat.ChatId,
-                            photo: InputFile.FromStream(stream),
-                            caption: caption,
-                            parseMode: ParseMode.MarkdownV2
-                        );
+                        using (var stream = await _httpClient.GetStreamAsync(imageUrl))
+                        {
+                            var escapedQuote = EscapeMarkdown(quote);
+                            var escapedAuthor = EscapeMarkdown(author);
+                            var caption = $"*Доброе утро\\!* ☀️\n\nЦитата дня:\n>{escapedQuote}_ \\(c\\) {(escapedAuthor == string.Empty ? "Неизвестный автор" : escapedAuthor)}_";
+                            await _botClient.SendPhotoAsync(
+                                chatId: chat.ChatId,
+                                photo: InputFile.FromStream(stream),
+                                caption: caption,
+                                parseMode: ParseMode.MarkdownV2
+                            );
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.WriteLine($"Error sending message to chat {chat.ChatId}: {ex.Message}");
                     }
                 }
-                catch (Exception ex)
-                {
-                    Console.WriteLine($"Error sending message to chat {chat.ChatId}: {ex.Message}");
-                }
+            }
+            finally
+            {
+                _semaphore.Release();
             }
         }
 

@@ -1,43 +1,108 @@
-# Good Morning Bot
+# GoodMorningBot
 
-Telegram бот, который каждое утро в 9:00 по московскому времени отправляет в чаты пожелание доброго утра, красивую картинку и мотивирующую цитату.
-
-## Необходимые компоненты
-
-- .NET 6.0 или выше
-- SQL Server
-- Telegram Bot Token
-- Unsplash API Key
-
-## Настройка
-
-1. Создайте базу данных в SQL Server
-2. Установите следующие переменные окружения:
-   ```
-   TELEGRAM_BOT_TOKEN=your_telegram_bot_token
-   UNSPLASH_API_KEY=your_unsplash_api_key
-   DATABASE_CONNECTION="Server=your_server;Database=your_database;User Id=your_user;Password=your_password;"
-   ```
-
-## Запуск
-
-1. Склонируйте репозиторий
-2. Перейдите в директорию проекта
-3. Выполните команду:
-   ```
-   dotnet run
-   ```
-
-## Использование
-
-1. Добавьте бота в чат или группу
-2. Отправьте команду `/start`
-3. Бот будет автоматически отправлять сообщения каждое утро в 9:00 по московскому времени
+Telegram бот, который отправляет ежедневные утренние сообщения с мотивирующими цитатами и красивыми фотографиями.
 
 ## Функциональность
 
-- Автоматическая отправка сообщений в 9:00 по московскому времени
-- Случайные красивые изображения с Unsplash
-- Мотивирующие цитаты на русском языке
-- Сохранение списка чатов в базе данных
-- Автоматическое восстановление после перезапуска 
+- Отправка ежедневных сообщений в настроенное время
+- Случайные мотивирующие цитаты на русском языке (API Forismatic)
+- Красивые фотографии для каждого сообщения (API Unsplash)
+- Поддержка групповых чатов и личных сообщений
+- Форматированный текст (жирный шрифт, цитаты, курсив)
+
+## Настройка
+
+1. Создайте файл `appsettings.json` в корневой папке проекта:
+
+```json
+{
+  "ConnectionStrings": {
+    "DefaultConnection": "Server=(localdb)\\mssqllocaldb;Database=GoodMorningBot;Trusted_Connection=True;MultipleActiveResultSets=true"
+  },
+  "BotConfiguration": {
+    "TelegramBotToken": "ВАШ_ТОКЕН_БОТА",
+    "UnsplashApiKey": "ВАШ_КЛЮЧ_API_UNSPLASH"
+  }
+}
+```
+
+2. Получите необходимые API ключи:
+   - Telegram Bot Token: Создайте бота через [@BotFather](https://t.me/BotFather)
+   - Unsplash API Key: Зарегистрируйтесь на [Unsplash Developers](https://unsplash.com/developers)
+
+3. Установите .NET 8.0 SDK
+
+4. Запустите миграции базы данных:
+```bash
+dotnet ef database update
+```
+
+## Настройка времени отправки
+
+Время отправки сообщений настраивается через CRON-выражение в файле `Program.cs`. По умолчанию установлено на 9:00 по московскому времени.
+
+Примеры CRON-выражений:
+```csharp
+// Каждый день в 9:00
+"0 0 9 * * ?"
+
+// Каждый день в 10:30
+"0 30 10 * * ?"
+
+// Каждые 30 минут (для тестирования)
+"0 */30 * * * ?"
+
+// Каждую минуту (для тестирования)
+"0 * * * * ?"
+```
+
+Для изменения времени отправки найдите в `Program.cs` метод `ConfigureServices` и измените CRON-выражение:
+
+```csharp
+q.AddTrigger(opts => opts
+    .ForJob(jobKey)
+    .WithIdentity("MorningMessageTrigger")
+    .WithCronSchedule("0 0 9 * * ?", x => x
+        .InTimeZone(TimeZoneInfo.FindSystemTimeZoneById("Russian Standard Time")))
+);
+```
+
+## Использование
+
+1. Запустите бот:
+```bash
+dotnet run
+```
+
+2. Добавьте бота в чат или начните с ним личную переписку
+
+3. Отправьте команду `/start` для активации рассылки в текущем чате
+
+## Формат сообщений
+
+Каждое утреннее сообщение содержит:
+- **Жирный** текст приветствия "Доброе утро!"
+- Случайную красивую фотографию
+- Текст цитаты в формате `цитаты`
+- _Курсивом_ выделенное имя автора цитаты
+
+## Технические детали
+
+- .NET 8.0
+- Entity Framework Core
+- SQL Server
+- Telegram.Bot
+- Quartz.NET для планирования задач
+- Forismatic API для цитат
+- Unsplash API для фотографий
+
+## Зависимости
+
+Все необходимые пакеты NuGet указаны в файле проекта:
+- Microsoft.EntityFrameworkCore.SqlServer
+- Microsoft.EntityFrameworkCore.Design
+- Microsoft.Extensions.Configuration.Json
+- Microsoft.Extensions.Hosting
+- Newtonsoft.Json
+- Quartz
+- Telegram.Bot 
