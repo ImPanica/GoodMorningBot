@@ -67,7 +67,7 @@ namespace GoodMorningBot.Services
                         {
                             var escapedQuote = EscapeMarkdown(quote);
                             var escapedAuthor = EscapeMarkdown(author);
-                            var caption = $"*Доброе утро\\!* ☀️\n\nЦитата дня:\n>{escapedQuote}_ \\(c\\) {(escapedAuthor == string.Empty ? "Неизвестный автор" : escapedAuthor)}_";
+                            var caption = $"*Доброе утро\\!* ☀️\n\nЦитата дня:\n>{escapedQuote}\n_\\(c\\) {(escapedAuthor == string.Empty ? "Неизвестный автор" : escapedAuthor)}_";
                             await _botClient.SendPhotoAsync(
                                 chatId: chat.ChatId,
                                 photo: InputFile.FromStream(stream),
